@@ -1,0 +1,65 @@
+{
+    "name": "expo-localized-widgets",
+    "version": "56.0.0",
+    "description": "Localization helpers and an Expo config plugin for expo-widgets.",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jimvaneijk/expo-localized-widgets.git"
+    },
+    "homepage": "https://github.com/jimvaneijk/expo-localized-widgets#readme",
+    "bugs": {
+        "url": "https://github.com/jimvaneijk/expo-localized-widgets/issues"
+    },
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "react-native": "dist/index.js",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./app.plugin": "./app.plugin.js"
+    },
+    "files": [
+        "app.plugin.js",
+        "dist",
+        "plugin"
+    ],
+    "scripts": {
+        "build": "npm run clean && tsc -p tsconfig.build.json",
+        "clean": "node scripts/clean.js",
+        "lint": "eslint .",
+        "prettier:check": "prettier --check .",
+        "prettier:write": "prettier --write .",
+        "test": "npm run build && node --test tests/*.test.js",
+        "typecheck": "tsc --noEmit"
+    },
+    "keywords": [
+        "expo",
+        "expo-widgets",
+        "localization",
+        "react-native",
+        "widgetkit"
+    ],
+    "dependencies": {
+        "@expo/config-plugins": "^56.0.0",
+        "xcode": "^3.0.1"
+    },
+    "peerDependencies": {
+        "expo": ">=56.0.0 <57.0.0",
+        "expo-widgets": ">=56.0.0 <57.0.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.25.0",
+        "@types/node": "^25.0.0",
+        "eslint": "^9.25.0",
+        "globals": "^16.0.0",
+        "prettier": "^3.5.0",
+        "typescript": "~6.0.3",
+        "typescript-eslint": "^8.61.0"
+    },
+    "engines": {
+        "node": ">=20"
+    }
+}
