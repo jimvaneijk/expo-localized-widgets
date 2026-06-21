@@ -19,4 +19,5 @@ jobs:
             - run: npm run lint
             - run: npm run prettier:check
             - run: npm test
+            - run: git diff --exit-code dist
             - run: npm pack --dry-run

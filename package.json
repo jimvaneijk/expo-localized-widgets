@@ -1,6 +1,6 @@
 {
     "name": "expo-localized-widgets",
-    "version": "56.0.1",
+    "version": "56.0.2",
     "description": "Localization helpers and an Expo config plugin for expo-widgets.",
     "license": "MIT",
     "repository": {
