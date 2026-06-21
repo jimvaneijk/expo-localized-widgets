@@ -1,6 +1,6 @@
 {
     "name": "expo-localized-widgets",
-    "version": "56.0.0",
+    "version": "56.0.1",
     "description": "Localization helpers and an Expo config plugin for expo-widgets.",
     "license": "MIT",
     "repository": {
@@ -32,6 +32,7 @@
         "lint": "eslint .",
         "prettier:check": "prettier --check .",
         "prettier:write": "prettier --write .",
+        "prepare": "npm run build",
         "test": "npm run build && node --test tests/*.test.js",
         "typecheck": "tsc --noEmit"
     },
