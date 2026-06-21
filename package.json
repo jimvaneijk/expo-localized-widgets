@@ -3,6 +3,7 @@
     "version": "56.0.2",
     "description": "Localization helpers and an Expo config plugin for expo-widgets.",
     "license": "MIT",
+    "author": "Jim van Eijk <jim@five10.nl>",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/jimvaneijk/expo-localized-widgets.git"
