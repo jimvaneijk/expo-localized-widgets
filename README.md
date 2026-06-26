@@ -85,7 +85,8 @@ Write a new snapshot or timeline whenever the app language changes.
 ## Localize widget gallery metadata
 
 Register the plugin after `expo-widgets`. Source locale values must exactly match the `displayName`
-and `description` configured for the widget:
+and `description` configured for the widget. The plugin warns at prebuild time when it detects a
+mismatch between the source strings and the `expo-widgets` config.
 
 ```ts
 export default {
@@ -107,7 +108,6 @@ export default {
             [
                 'expo-localized-widgets',
                 {
-                    targetName: 'ExpoWidgetsTarget',
                     sourceLanguage: 'en',
                     localizations: {
                         en: {
@@ -126,10 +126,81 @@ export default {
 };
 ```
 
+When you have more than one widget extension target, pass a `targets` array instead of repeating
+the plugin registration:
+
+```ts
+[
+    'expo-localized-widgets',
+    {
+        targets: [
+            {
+                targetName: 'ExpoWidgetsTarget',
+                sourceLanguage: 'en',
+                localizations: {
+                    en: { displayName: 'Next reservation', description: 'Counts down to your next stay.' },
+                    ar: { displayName: 'الحجز القادم', description: 'يعرض العد التنازلي لإقامتك القادمة.' },
+                },
+            },
+            {
+                targetName: 'StatsWidgetTarget',
+                sourceLanguage: 'en',
+                localizations: {
+                    en: { displayName: 'Trip stats', description: 'Shows your travel summary.' },
+                    ar: { displayName: 'إحصائيات الرحلة', description: 'يعرض ملخص رحلاتك.' },
+                },
+            },
+        ],
+    },
+]
+```
+
 The plugin creates `Localizable.xcstrings`, adds it to the generated widget extension target and
 registers each configured locale in the Xcode project. Run Expo prebuild or create a new native build
 after changing gallery localizations.
 
+## Configuration reference
+
+### Config plugin options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `targets` | `TargetOptions[]` | — | Array of per-target configs. Use this when you have more than one widget extension target. When provided, the top-level `targetName`, `sourceLanguage`, and `localizations` are ignored. |
+| `targetName` | `string` | `'ExpoWidgetsTarget'` | (Flat form only.) Name of the Xcode widget extension target. `expo-widgets` currently fixes this to `ExpoWidgetsTarget`; the option is accepted so no config changes are needed once that limitation is lifted. |
+| `sourceLanguage` | `string` | `'en'` | (Flat form only.) IETF language tag of the source locale. Must be a key in `localizations`. The values for this locale must exactly match the `displayName` and `description` in the `expo-widgets` config. |
+| `localizations` | `object` | — | (Flat form only.) **Required.** A map of IETF language tags to translation objects. Each translation object must contain the same keys across all locales. |
+
+**`TargetOptions`** (each entry in the `targets` array):
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `targetName` | `string` | `'ExpoWidgetsTarget'` | Name of the Xcode widget extension target. |
+| `sourceLanguage` | `string` | `'en'` | IETF language tag of the source locale. Must be a key in `localizations`. |
+| `localizations` | `object` | — | **Required.** A map of IETF language tags to translation objects. Each translation object must contain the same keys across all locales. |
+
+### `localizeWidgetProps(props, options)`
+
+Merges your widget data with the resolved locale and translations. Returns `props` extended with
+`widgetLocale` and `widgetTranslations`.
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `locale` | `string \| null \| undefined` | The user's current locale (e.g. `i18n.resolvedLanguage`). Falls back to `fallbackLocale` when `null` or `undefined`. Accepts both `en-US` and `en_US` forms. |
+| `fallbackLocale` | `string` | **Required.** Locale used when `locale` is missing or cannot be matched to an entry in `translations`. |
+| `translations` | `object` | **Required.** A map of locale → `Record<string, string>`. |
+
+### `getWidgetTranslations(options)`
+
+Same signature as the options above. Returns `{ widgetLocale, widgetTranslations }` without merging
+into existing props. Useful when you need the resolved values separately.
+
+### `resolveWidgetLocale(locale, availableLocales, fallbackLocale)`
+
+Low-level helper that picks the best match for `locale` from `availableLocales`. Tries an exact
+match first, then a language-only match (e.g. `en-US` → `en`), then falls back to
+`fallbackLocale`. Throws when `fallbackLocale` is not in `availableLocales`.
+
 ## License
 
 MIT
+

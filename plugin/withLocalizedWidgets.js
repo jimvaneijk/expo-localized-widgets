@@ -138,6 +138,8 @@ const ensureCatalogResource = (project, targetName, targetUuid) => {
 };
 
 const setWidgetLocalizations = (projectRoot, options) => {
+    // expo-widgets currently fixes the target name to 'ExpoWidgetsTarget'; the option is
+    // accepted here so projects require no config changes when that limitation is lifted.
     const targetName = options.targetName ?? 'ExpoWidgetsTarget';
     const sourceLanguage = options.sourceLanguage ?? 'en';
     const localizations = options.localizations ?? {};
@@ -168,15 +170,93 @@ const setWidgetLocalizations = (projectRoot, options) => {
     fs.writeFileSync(xcodeProjectPath, project.writeSync());
 };
 
-const withLocalizedWidgets = (config, options = {}) =>
-    withFinalizedMod(config, [
+const normalizeTargets = (options = {}) => {
+    if (Array.isArray(options.targets)) {
+        return options.targets.map((t) => ({
+            targetName: t.targetName ?? 'ExpoWidgetsTarget',
+            sourceLanguage: t.sourceLanguage ?? 'en',
+            localizations: t.localizations ?? {},
+        }));
+    }
+
+    return [
+        {
+            // expo-widgets currently fixes the target name to 'ExpoWidgetsTarget'; the option is
+            // accepted here so projects require no config changes when that limitation is lifted.
+            targetName: options.targetName ?? 'ExpoWidgetsTarget',
+            sourceLanguage: options.sourceLanguage ?? 'en',
+            localizations: options.localizations ?? {},
+        },
+    ];
+};
+
+const validateAgainstExpoWidgets = (targets, config) => {
+    const plugins = config.plugins ?? [];
+    const expoWidgetsEntry = plugins.find(
+        (p) => Array.isArray(p) && p[0] === 'expo-widgets',
+    );
+
+    if (!expoWidgetsEntry) return;
+
+    const widgetDefs = expoWidgetsEntry[1]?.widgets ?? [];
+
+    for (const target of targets) {
+        const sourceStrings = target.localizations[target.sourceLanguage];
+        if (!sourceStrings) continue;
+
+        // Match widgets to this target by name; fall back to all widgets when none match
+        // (expo-widgets currently uses a single fixed target for all widgets).
+        const relevantWidgets = widgetDefs.filter((w) => w.name === target.targetName);
+        const widgetsToCheck = relevantWidgets.length > 0 ? relevantWidgets : widgetDefs;
+
+        const authoritative = new Set();
+        for (const w of widgetsToCheck) {
+            if (typeof w.displayName === 'string') authoritative.add(w.displayName);
+            if (typeof w.description === 'string') authoritative.add(w.description);
+        }
+
+        if (authoritative.size === 0) continue;
+
+        const sourceValues = new Set(Object.values(sourceStrings));
+
+        for (const v of sourceValues) {
+            if (!authoritative.has(v)) {
+                console.warn(
+                    `[expo-localized-widgets] "${v}" (target "${target.targetName}", locale "${target.sourceLanguage}") ` +
+                    `is not present as a displayName or description in expo-widgets config. ` +
+                    `Source locale values must exactly match expo-widgets displayName and description.`,
+                );
+            }
+        }
+
+        for (const v of authoritative) {
+            if (!sourceValues.has(v)) {
+                console.warn(
+                    `[expo-localized-widgets] "${v}" is configured in expo-widgets ` +
+                    `(target "${target.targetName}") but has no matching source string in the "${target.sourceLanguage}" locale.`,
+                );
+            }
+        }
+    }
+};
+
+const withLocalizedWidgets = (config, options = {}) => {
+    const targets = normalizeTargets(options);
+    validateAgainstExpoWidgets(targets, config);
+
+    return withFinalizedMod(config, [
         'ios',
-        (config) => {
-            setWidgetLocalizations(config.modRequest.projectRoot, options);
-            return config;
+        (modConfig) => {
+            for (const target of targets) {
+                setWidgetLocalizations(modConfig.modRequest.projectRoot, target);
+            }
+            return modConfig;
         },
     ]);
+};
 
 module.exports = withLocalizedWidgets;
 module.exports.createStringCatalog = createStringCatalog;
 module.exports.setWidgetLocalizations = setWidgetLocalizations;
+module.exports.normalizeTargets = normalizeTargets;
+module.exports.validateAgainstExpoWidgets = validateAgainstExpoWidgets;

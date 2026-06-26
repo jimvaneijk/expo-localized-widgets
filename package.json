@@ -1,6 +1,6 @@
 {
     "name": "expo-localized-widgets",
-    "version": "56.0.3",
+    "version": "56.0.4",
     "description": "Localization helpers and an Expo config plugin for expo-widgets.",
     "license": "MIT",
     "author": "Jim van Eijk <jim@five10.nl>",
