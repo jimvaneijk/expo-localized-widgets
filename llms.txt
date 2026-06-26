@@ -1,0 +1,163 @@
+# expo-localized-widgets
+
+> Localization helpers for `expo-widgets` and an Expo config plugin that localizes iOS widget gallery metadata (the name and description shown in the iOS widget picker).
+
+This is an independent community package. It is not created, maintained or endorsed by Expo or Software Mansion.
+
+## What it does
+
+`expo-widgets` (the official Expo SDK package for iOS WidgetKit) does not provide built-in localization support. This package fills that gap with two independent utilities:
+
+1. **Runtime helper** (`localizeWidgetProps`) — resolves the correct locale and passes translations to a widget via `updateSnapshot` / `updateTimeline`.
+2. **Config plugin** (`expo-localized-widgets`) — generates a `Localizable.xcstrings` string catalog inside the widget extension target at prebuild time, enabling localized `displayName` and `description` in the iOS widget gallery.
+
+The package is RTL-ready. Passing the resolved locale into SwiftUI's `environment` modifier enables locale-aware layout for languages such as Arabic.
+
+## Installation
+
+```bash
+npx expo install expo-widgets
+npm install expo-localized-widgets
+```
+
+`expo-widgets` is iOS-only, requires a development build, and is not available in Expo Go.
+
+## Runtime API
+
+### `localizeWidgetProps(props, options)`
+
+Merges widget data with the resolved locale and translations. Returns `props` extended with `widgetLocale: string` and `widgetTranslations: Record<string, string>`.
+
+```ts
+import { localizeWidgetProps } from 'expo-localized-widgets';
+
+const props = localizeWidgetProps(
+  { reservationCount: 3 },
+  {
+    locale: i18n.resolvedLanguage, // string | null | undefined
+    fallbackLocale: 'en',
+    translations: {
+      en: { title: 'Next stay' },
+      ar: { title: 'الإقامة القادمة' },
+    },
+  },
+);
+
+MyWidget.updateSnapshot(props);
+// props.widgetLocale      → 'ar'
+// props.widgetTranslations → { title: 'الإقامة القادمة' }
+// props.reservationCount  → 3  (preserved unchanged)
+```
+
+Locale resolution order: exact match → language-only match (e.g. `en-US` → `en`) → `fallbackLocale`. Accepts both `en-US` and `en_US` forms.
+
+### `getWidgetTranslations(options)`
+
+Same options as `localizeWidgetProps`. Returns `{ widgetLocale, widgetTranslations }` without merging into existing props.
+
+### `resolveWidgetLocale(locale, availableLocales, fallbackLocale)`
+
+Low-level locale picker. Returns the best matching locale string from `availableLocales`. Throws when `fallbackLocale` is not in `availableLocales`.
+
+### Using translations inside the widget
+
+```tsx
+import { VStack, Text } from '@expo/ui/swift-ui';
+import { environment } from '@expo/ui/swift-ui/modifiers';
+
+const MyWidget = (props) => {
+  'widget';
+  return (
+    <VStack modifiers={[environment({ key: 'locale', value: props.widgetLocale })]}>
+      <Text>{props.widgetTranslations.title}</Text>
+    </VStack>
+  );
+};
+```
+
+## Config plugin
+
+Register the plugin **after** `expo-widgets`. Source locale values must exactly match the `displayName` and `description` values in the `expo-widgets` config. The plugin warns at prebuild time when a mismatch is detected.
+
+### Single target (flat form)
+
+```ts
+// app.config.ts
+export default {
+  expo: {
+    plugins: [
+      ['expo-widgets', {
+        widgets: [{
+          name: 'NextReservationWidget',
+          displayName: 'Next reservation',
+          description: 'Counts down to your next stay.',
+          supportedFamilies: ['systemSmall'],
+        }],
+      }],
+      ['expo-localized-widgets', {
+        // targetName defaults to 'ExpoWidgetsTarget' (currently the only value expo-widgets supports)
+        sourceLanguage: 'en',
+        localizations: {
+          en: { displayName: 'Next reservation', description: 'Counts down to your next stay.' },
+          ar: { displayName: 'الحجز القادم', description: 'يعرض العد التنازلي لإقامتك القادمة.' },
+        },
+      }],
+    ],
+  },
+};
+```
+
+### Multiple targets (array form)
+
+```ts
+['expo-localized-widgets', {
+  targets: [
+    {
+      targetName: 'ExpoWidgetsTarget',
+      sourceLanguage: 'en',
+      localizations: {
+        en: { displayName: 'Next reservation', description: 'Counts down to your next stay.' },
+        ar: { displayName: 'الحجز القادم', description: 'يعرض العد التنازلي لإقامتك القادمة.' },
+      },
+    },
+    {
+      targetName: 'StatsWidgetTarget',
+      sourceLanguage: 'en',
+      localizations: {
+        en: { displayName: 'Trip stats', description: 'Shows your travel summary.' },
+        ar: { displayName: 'إحصائيات الرحلة', description: 'يعرض ملخص رحلاتك.' },
+      },
+    },
+  ],
+}]
+```
+
+## Config plugin options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `targets` | `TargetOptions[]` | — | Array form for multiple extension targets. When set, top-level `targetName`/`sourceLanguage`/`localizations` are ignored. |
+| `targetName` | `string` | `'ExpoWidgetsTarget'` | Xcode extension target name. `expo-widgets` currently fixes this value; option is future-ready. |
+| `sourceLanguage` | `string` | `'en'` | Source locale. Values must exactly match the `displayName`/`description` in `expo-widgets`. |
+| `localizations` | `object` | — | Required (flat form). Map of locale → key → translated string. |
+
+Each `TargetOptions` entry in `targets` accepts the same `targetName`, `sourceLanguage`, and `localizations` fields with the same defaults.
+
+## TypeScript
+
+The package ships TypeScript types for both the runtime (`dist/index.d.ts`) and the config plugin (`plugin/withLocalizedWidgets.d.ts`). The plugin types are exposed via the `./app.plugin` export condition in `package.json`.
+
+```ts
+import type withLocalizedWidgets from 'expo-localized-widgets/app.plugin';
+// withLocalizedWidgets.WithLocalizedWidgetsOptions
+// withLocalizedWidgets.TargetOptions
+// withLocalizedWidgets.ResolvedTarget
+```
+
+## Versioning
+
+Package majors follow Expo SDK majors. Breaking changes within a major use the minor version; fixes use the patch version.
+
+| Package | Expo SDK | expo-widgets |
+|---|---|---|
+| 56.x | 56.x | 56.x |

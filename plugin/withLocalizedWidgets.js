@@ -12,6 +12,14 @@ const unquote = (value) =>
         ? value.slice(1, -1)
         : value;
 
+/**
+ * Builds the xcstrings catalog object for a widget extension target.
+ *
+ * @param {string} sourceLanguage - IETF language tag of the source locale (e.g. `'en'`).
+ * @param {Record<string, Record<string, string>>} localizations - Map of locale → key → string.
+ * @returns {{ sourceLanguage: string, strings: object, version: string }}
+ * @throws {Error} When the source locale is missing, a translation key is absent, or source strings are duplicated.
+ */
 const createStringCatalog = (sourceLanguage, localizations) => {
     if (!localizations[sourceLanguage]) {
         throw new Error(
@@ -137,6 +145,13 @@ const ensureCatalogResource = (project, targetName, targetUuid) => {
     }
 };
 
+/**
+ * Writes `Localizable.xcstrings` into the widget extension target directory and wires it
+ * into the Xcode project as a resource.
+ *
+ * @param {string} projectRoot - Absolute path to the Expo project root.
+ * @param {{ targetName?: string, sourceLanguage?: string, localizations: Record<string, Record<string, string>> }} options
+ */
 const setWidgetLocalizations = (projectRoot, options) => {
     // expo-widgets currently fixes the target name to 'ExpoWidgetsTarget'; the option is
     // accepted here so projects require no config changes when that limitation is lifted.
@@ -170,6 +185,15 @@ const setWidgetLocalizations = (projectRoot, options) => {
     fs.writeFileSync(xcodeProjectPath, project.writeSync());
 };
 
+/**
+ * Normalises the two accepted option shapes into a uniform array of resolved targets.
+ *
+ * Flat form:  `{ targetName?, sourceLanguage?, localizations }`
+ * Array form: `{ targets: [{ targetName?, sourceLanguage?, localizations }, ...] }`
+ *
+ * @param {{ targets?: object[], targetName?: string, sourceLanguage?: string, localizations?: object }} [options]
+ * @returns {{ targetName: string, sourceLanguage: string, localizations: Record<string, Record<string, string>> }[]}
+ */
 const normalizeTargets = (options = {}) => {
     if (Array.isArray(options.targets)) {
         return options.targets.map((t) => ({
@@ -190,6 +214,16 @@ const normalizeTargets = (options = {}) => {
     ];
 };
 
+/**
+ * Cross-validates source-language strings against the `expo-widgets` plugin config.
+ *
+ * Emits `console.warn` — never throws — when values in the source locale do not match the
+ * `displayName` / `description` strings configured in `expo-widgets`, in both directions.
+ * Silently no-ops when `expo-widgets` is not present in `config.plugins`.
+ *
+ * @param {{ targetName: string, sourceLanguage: string, localizations: Record<string, Record<string, string>> }[]} targets
+ * @param {{ plugins?: unknown[] }} config - The full Expo config object.
+ */
 const validateAgainstExpoWidgets = (targets, config) => {
     const plugins = config.plugins ?? [];
     const expoWidgetsEntry = plugins.find(
@@ -240,6 +274,14 @@ const validateAgainstExpoWidgets = (targets, config) => {
     }
 };
 
+/**
+ * Expo config plugin that localizes iOS widget gallery metadata (`displayName` and `description`)
+ * by generating a `Localizable.xcstrings` string catalog inside the widget extension target.
+ *
+ * Register this plugin **after** `expo-widgets` in your app config.
+ *
+ * @type {import('@expo/config-plugins').ConfigPlugin<import('./withLocalizedWidgets').WithLocalizedWidgetsOptions>}
+ */
 const withLocalizedWidgets = (config, options = {}) => {
     const targets = normalizeTargets(options);
     validateAgainstExpoWidgets(targets, config);

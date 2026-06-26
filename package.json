@@ -20,11 +20,15 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
-        "./app.plugin": "./app.plugin.js"
+        "./app.plugin": {
+            "types": "./plugin/withLocalizedWidgets.d.ts",
+            "default": "./app.plugin.js"
+        }
     },
     "files": [
         "app.plugin.js",
         "dist",
+        "llms.txt",
         "plugin"
     ],
     "scripts": {
@@ -41,8 +45,13 @@
         "expo",
         "expo-widgets",
         "localization",
+        "i18n",
         "react-native",
-        "widgetkit"
+        "ios",
+        "widget",
+        "widgetkit",
+        "config-plugin",
+        "xcstrings"
     ],
     "dependencies": {
         "@expo/config-plugins": "^56.0.0",
